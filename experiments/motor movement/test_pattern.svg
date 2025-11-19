@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Simple test patterns for plotter -->
+  
+  <!-- Square -->
+  <rect x="20" y="20" width="40" height="40" fill="none" stroke="black" stroke-width="1"/>
+  
+  <!-- Circle -->
+  <circle cx="120" cy="40" r="20" fill="none" stroke="black" stroke-width="1"/>
+  
+  <!-- Triangle using path -->
+  <path d="M 40 80 L 60 120 L 20 120 Z" fill="none" stroke="black" stroke-width="1"/>
+  
+  <!-- Line -->
+  <line x1="80" y1="80" x2="160" y2="120" stroke="black" stroke-width="1"/>
+  
+  <!-- Star using polyline -->
+  <polyline points="100,140 110,165 135,165 115,180 120,205 100,190 80,205 85,180 65,165 90,165" 
+            fill="none" stroke="black" stroke-width="1"/>
+</svg>
