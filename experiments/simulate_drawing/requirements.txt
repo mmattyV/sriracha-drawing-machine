@@ -1,0 +1,4 @@
+# Dependencies for SSG simulation and visualization
+matplotlib>=3.5.0
+numpy>=1.21.0
+

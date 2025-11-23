@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">
+  <!-- Simple 5-point star for testing -->
+  <path d="M 30,5 L 37,22 L 55,22 L 40,33 L 47,50 L 30,39 L 13,50 L 20,33 L 5,22 L 23,22 Z" 
+        fill="none" stroke="black" stroke-width="1"/>
+</svg>
+

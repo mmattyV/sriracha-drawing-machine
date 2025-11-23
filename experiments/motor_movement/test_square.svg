@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50">
+  <!-- Simple 50mm square for testing -->
+  <rect x="0" y="0" width="50" height="50" fill="none" stroke="black" stroke-width="1"/>
+</svg>
+

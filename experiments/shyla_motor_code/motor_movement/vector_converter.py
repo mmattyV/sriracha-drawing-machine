@@ -269,6 +269,23 @@ class SVGToPlotter:
         if close and len(coords) >= 4:
             self.path_data.append(Point(coords[0] * scale, coords[1] * scale, pen_down=True))
     
+    def center_drawing(self):
+        """Center the drawing around origin (0, 0)"""
+        if not self.path_data:
+            return
+        
+        # Get current bounds
+        bounds = self.get_bounds()
+        
+        # Calculate center offset
+        center_x = (bounds['min_x'] + bounds['max_x']) / 2.0
+        center_y = (bounds['min_y'] + bounds['max_y']) / 2.0
+        
+        # Translate all points to center
+        for point in self.path_data:
+            point.x -= center_x
+            point.y -= center_y
+    
     def to_motor_instructions(self) -> str:
         """Convert path data to JSON motor instructions"""
         instructions = []
@@ -307,9 +324,14 @@ async def send_to_plotter(svg_file: str, scale: float = 1.0):
         print("Error: No path data extracted from SVG")
         return
     
+    # Center the drawing around origin
+    print("Centering drawing around origin (0, 0)...")
+    converter.center_drawing()
+    
     # Show drawing info
     bounds = converter.get_bounds()
     print(f"Drawing size: {bounds['width']:.1f} x {bounds['height']:.1f} units")
+    print(f"Centered bounds: X={bounds['min_x']:.1f} to {bounds['max_x']:.1f}, Y={bounds['min_y']:.1f} to {bounds['max_y']:.1f}")
     
     # Connect to plotter
     uri = f"ws://{PLOTTER_IP}/ws"
