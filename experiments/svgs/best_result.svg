@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Pond outer edge -->
+  <ellipse cx="110" cy="140" rx="80" ry="40"/>
+
+  <!-- Single inner ripple -->
+  <ellipse cx="110" cy="140" rx="60" ry="30"/>
+
+  <!-- Frog outline: head, body, and hind legs as one continuous curve -->
+  <path d="M110 150
+           Q130 150 140 136
+           Q150 122 142 108
+           Q136 96 132 90
+           Q126 80 118 76
+           Q110 72 102 76
+           Q94 80 88 90
+           Q84 96 78 108
+           Q70 122 80 136
+           Q90 150 110 150"/>
+
+  <!-- Front legs as one continuous curve -->
+  <path d="M96 132
+           Q100 144 106 148
+           Q110 150 114 148
+           Q120 144 124 132"/>
+
+  <!-- Eyes -->
+  <circle cx="96" cy="72" r="6"/>
+  <circle cx="124" cy="72" r="6"/>
+
+  <!-- Mouth -->
+  <path d="M98 102 Q110 110 122 102"/>
+</svg>
