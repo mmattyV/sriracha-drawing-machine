@@ -3,7 +3,7 @@
  * SSG (Sauce Simple G-code) Protocol Implementation
  * 
  * Features:
- * - Dual X-motor gantry with auto-squaring
+ * - Single X-motor, single Y-motor 2D gantry
  * - PWM sauce pump control with flow ramping
  * - SSG protocol with sequence numbers and acks
  * - State machine (IDLE/HOMING/READY/PRINTING/PAUSED/ERROR)
@@ -30,21 +30,29 @@
 const char* WIFI_SSID = "MAKERSPACE";
 const char* WIFI_PASSWORD = "12345678";
 
-// Motor pins (Step, Direction)
-#define X1_STEP_PIN  32
-#define X1_DIR_PIN   33
-#define X2_STEP_PIN  25
-#define X2_DIR_PIN   26
-#define Y_STEP_PIN   14
-#define Y_DIR_PIN    27
+// ==============================================
+// XIAO ESP32C3 PIN MAPPING
+// ==============================================
+// Xiao ESP32C3 available GPIOs:
+//   D0=GPIO2, D1=GPIO3, D2=GPIO4, D3=GPIO5
+//   D4=GPIO6, D5=GPIO7, D6=GPIO21, D7=GPIO20
+//   D8=GPIO8, D9=GPIO9, D10=GPIO10
+//
+// Adjust these to match YOUR wiring!
+// ==============================================
 
 // Endstop pins (active low with pullup)
-#define X1_ENDSTOP_PIN  15
-#define X2_ENDSTOP_PIN  4
-#define Y_ENDSTOP_PIN   16
+#define X_ENDSTOP_PIN  20  // D7
+#define Y_ENDSTOP_PIN  8   // D8
+
+// Motor pins (Step, Direction)
+#define X_STEP_PIN  2   // D0
+#define X_DIR_PIN   3   // D1
+#define Y_STEP_PIN  4   // D2
+#define Y_DIR_PIN   5   // D3
 
 // Sauce pump PWM
-#define PUMP_PWM_PIN    23
+#define PUMP_PWM_PIN   21  // D6
 #define PUMP_PWM_CHANNEL 0  // Not used in ESP32 core 3.x (kept for reference)
 #define PUMP_PWM_FREQ   1000  // 1kHz
 #define PUMP_PWM_RESOLUTION 8  // 8-bit (0-255)
@@ -88,8 +96,7 @@ String error_message = "";
 // MOTOR OBJECTS
 // ============================================
 
-AccelStepper stepper_X1(AccelStepper::DRIVER, X1_STEP_PIN, X1_DIR_PIN);
-AccelStepper stepper_X2(AccelStepper::DRIVER, X2_STEP_PIN, X2_DIR_PIN);
+AccelStepper stepper_X(AccelStepper::DRIVER, X_STEP_PIN, X_DIR_PIN);
 AccelStepper stepper_Y(AccelStepper::DRIVER, Y_STEP_PIN, Y_DIR_PIN);
 
 // ============================================
@@ -144,20 +151,26 @@ const unsigned long HEARTBEAT_TIMEOUT_MS = 3000;  // 3 seconds
 
 void setup() {
   Serial.begin(115200);
+  
+  // Wait for USB CDC serial to be ready (important for Xiao ESP32C3!)
+  // This waits up to 3 seconds for serial monitor to connect
+  unsigned long serialStart = millis();
+  while (!Serial && (millis() - serialStart < 3000)) {
+    delay(10);
+  }
+  delay(500);  // Extra delay for stability
+  
   Serial.println("\n\n=================================");
   Serial.println("Sriracha Sketcher - Booting");
   Serial.println("=================================");
   
   // Configure endstops
-  pinMode(X1_ENDSTOP_PIN, INPUT_PULLUP);
-  pinMode(X2_ENDSTOP_PIN, INPUT_PULLUP);
+  pinMode(X_ENDSTOP_PIN, INPUT_PULLUP);
   pinMode(Y_ENDSTOP_PIN, INPUT_PULLUP);
   
   // Configure steppers
-  stepper_X1.setMaxSpeed(MAX_SPEED_X);
-  stepper_X1.setAcceleration(ACCELERATION);
-  stepper_X2.setMaxSpeed(MAX_SPEED_X);
-  stepper_X2.setAcceleration(ACCELERATION);
+  stepper_X.setMaxSpeed(MAX_SPEED_X);
+  stepper_X.setAcceleration(ACCELERATION);
   stepper_Y.setMaxSpeed(MAX_SPEED_Y);
   stepper_Y.setAcceleration(ACCELERATION);
   
@@ -246,8 +259,7 @@ void loop() {
   }
   
   // Always run steppers
-  stepper_X1.run();
-  stepper_X2.run();
+  stepper_X.run();
   stepper_Y.run();
   
   // Send heartbeat every second
@@ -468,8 +480,7 @@ void execute_next_command() {
   }
   
   // Check if motors are still moving
-  if (stepper_X1.distanceToGo() != 0 || 
-      stepper_X2.distanceToGo() != 0 || 
+  if (stepper_X.distanceToGo() != 0 || 
       stepper_Y.distanceToGo() != 0) {
     return;  // Wait for current move to complete
   }
@@ -504,8 +515,7 @@ void execute_g0(SSGCommand &cmd) {
   long target_x = current_x_mm * STEPS_PER_MM_X;
   long target_y = current_y_mm * STEPS_PER_MM_Y;
   
-  stepper_X1.moveTo(target_x);
-  stepper_X2.moveTo(target_x);
+  stepper_X.moveTo(target_x);
   stepper_Y.moveTo(target_y);
 }
 
@@ -524,8 +534,7 @@ void execute_g1(SSGCommand &cmd) {
   if (cmd.has_f) {
     float feed_mm_per_sec = cmd.f / 60.0;
     float speed_steps_per_sec = feed_mm_per_sec * STEPS_PER_MM_X;
-    stepper_X1.setMaxSpeed(speed_steps_per_sec);
-    stepper_X2.setMaxSpeed(speed_steps_per_sec);
+    stepper_X.setMaxSpeed(speed_steps_per_sec);
     stepper_Y.setMaxSpeed(speed_steps_per_sec * STEPS_PER_MM_Y / STEPS_PER_MM_X);
   }
   
@@ -533,65 +542,51 @@ void execute_g1(SSGCommand &cmd) {
   long target_x = current_x_mm * STEPS_PER_MM_X;
   long target_y = current_y_mm * STEPS_PER_MM_Y;
   
-  stepper_X1.moveTo(target_x);
-  stepper_X2.moveTo(target_x);
+  stepper_X.moveTo(target_x);
   stepper_Y.moveTo(target_y);
 }
 
 void execute_g28() {
-  // G28 - home all axes with auto-squaring
+  // G28 - home all axes
+  
+  #if TESTING_MODE
+    Serial.println("⚠️  TESTING MODE - Homing bypassed! Machine position unknown!");
+    current_x_mm = 0.0;
+    current_y_mm = 0.0;
+    current_state = STATE_READY;
+    expected_next_seq = 1;
+    last_acked_seq = 0;
+    Serial.println("System ready (no homing required)");
+    return;
+  #endif
+  
   Serial.println("Starting homing sequence...");
   current_state = STATE_HOMING;
   
   // Turn sauce off
   sauce_off();
   
-  // Phase 1: Home X1 independently
-  Serial.println("Homing X1...");
-  stepper_X1.setSpeed(-800);  // Move toward endstop
-  while (digitalRead(X1_ENDSTOP_PIN) == HIGH) {
-    stepper_X1.runSpeed();
+  // Phase 1: Home X axis
+  Serial.println("Homing X...");
+  stepper_X.setSpeed(-800);  // Move toward endstop (negative direction)
+  while (digitalRead(X_ENDSTOP_PIN) == HIGH) {
+    stepper_X.runSpeed();
   }
-  stepper_X1.setCurrentPosition(0);
-  stepper_X1.move(5 * STEPS_PER_MM_X);  // Back off 5mm
-  while (stepper_X1.distanceToGo() != 0) {
-    stepper_X1.run();
-  }
-  
-  // Phase 2: Home X2 independently (for squaring)
-  Serial.println("Homing X2...");
-  stepper_X2.setSpeed(-800);
-  while (digitalRead(X2_ENDSTOP_PIN) == HIGH) {
-    stepper_X2.runSpeed();
-  }
-  stepper_X2.setCurrentPosition(0);
-  stepper_X2.move(5 * STEPS_PER_MM_X);  // Back off 5mm
-  while (stepper_X2.distanceToGo() != 0) {
-    stepper_X2.run();
+  stepper_X.setCurrentPosition(0);
+  stepper_X.move(5 * STEPS_PER_MM_X);  // Back off 5mm
+  while (stepper_X.distanceToGo() != 0) {
+    stepper_X.run();
   }
   
-  // Phase 3: Slow re-home for precision (both X together)
+  // Slow re-home X for precision
   Serial.println("Precision X homing...");
-  stepper_X1.setSpeed(-200);
-  stepper_X2.setSpeed(-200);
-  bool x1_homed = false, x2_homed = false;
-  while (!x1_homed || !x2_homed) {
-    if (!x1_homed && digitalRead(X1_ENDSTOP_PIN) == LOW) {
-      stepper_X1.runSpeed();
-    } else {
-      x1_homed = true;
-      stepper_X1.setCurrentPosition(0);
-    }
-    
-    if (!x2_homed && digitalRead(X2_ENDSTOP_PIN) == LOW) {
-      stepper_X2.runSpeed();
-    } else {
-      x2_homed = true;
-      stepper_X2.setCurrentPosition(0);
-    }
+  stepper_X.setSpeed(-200);
+  while (digitalRead(X_ENDSTOP_PIN) == LOW) {
+    stepper_X.runSpeed();
   }
+  stepper_X.setCurrentPosition(0);
   
-  // Phase 4: Home Y
+  // Phase 2: Home Y axis
   Serial.println("Homing Y...");
   stepper_Y.setSpeed(-800);
   while (digitalRead(Y_ENDSTOP_PIN) == HIGH) {
@@ -603,7 +598,7 @@ void execute_g28() {
     stepper_Y.run();
   }
   
-  // Slow re-home Y
+  // Slow re-home Y for precision
   Serial.println("Precision Y homing...");
   stepper_Y.setSpeed(-200);
   while (digitalRead(Y_ENDSTOP_PIN) == LOW) {
@@ -611,9 +606,8 @@ void execute_g28() {
   }
   stepper_Y.setCurrentPosition(0);
   
-  // Reset speeds
-  stepper_X1.setMaxSpeed(MAX_SPEED_X);
-  stepper_X2.setMaxSpeed(MAX_SPEED_X);
+  // Reset speeds to normal
+  stepper_X.setMaxSpeed(MAX_SPEED_X);
   stepper_Y.setMaxSpeed(MAX_SPEED_Y);
   
   current_x_mm = 0.0;
@@ -677,8 +671,7 @@ void enter_error_state(String error) {
   current_state = STATE_ERROR;
   error_message = error;
   sauce_off();
-  stepper_X1.stop();
-  stepper_X2.stop();
+  stepper_X.stop();
   stepper_Y.stop();
   Serial.println("ERROR: " + error);
   ws.textAll("err code=" + error);

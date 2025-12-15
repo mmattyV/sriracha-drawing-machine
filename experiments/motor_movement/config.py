@@ -6,7 +6,7 @@ Adjust these values for your specific hardware setup
 # ============================================
 # ESP32 NETWORK CONFIGURATION
 # ============================================
-ESP32_IP = "192.168.0.126"  # Change to your ESP32's IP address
+ESP32_IP = "192.168.0.182"  # Change to your ESP32's IP address
 ESP32_PORT = 80
 WEBSOCKET_PATH = "/ws"
 

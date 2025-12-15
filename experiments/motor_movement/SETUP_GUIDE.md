@@ -532,3 +532,4 @@ You're ready to plot when:
 
 Time to make some delicious art! 🌶️🎨
 
+
